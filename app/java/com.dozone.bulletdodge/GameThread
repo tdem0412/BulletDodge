@@ -1,0 +1,74 @@
+package com.dozone.bulletdodge;
+
+import android.graphics.Canvas;
+import android.view.SurfaceHolder;
+
+/**
+ * Created by Dozone on 2015/4/17.
+ */
+public class GameThread extends Thread{
+    private final static int FPS = 60;
+    private final static int Period = 1000/FPS;
+    public long passedTime;
+    public boolean running;
+    private SurfaceHolder surfaceHolder;
+    private Game game;
+
+    public GameThread(SurfaceHolder surfaceHolder, Game game) {
+        super();
+        this.surfaceHolder = surfaceHolder;
+        this.game = game;
+    }
+
+    @Override
+    public void run() {
+        Canvas canvas;
+        int sleepTime;
+        long beginTime;
+        long timeDiff;
+        long conditionStartTime = 0;
+        long conditionDuration = 5000;
+        boolean condition = false;
+        int conditionRate = 1000;
+        int bulletType = 0;
+
+        while (running) {
+            canvas = null;
+            try {
+                canvas = surfaceHolder.lockCanvas();
+                synchronized (surfaceHolder) {
+                    beginTime = System.currentTimeMillis();
+                    if (!condition) {
+                        bulletType = Bullet.randInt(0, conditionRate);
+                        if (bulletType < 5) {
+                            condition = true;
+                            conditionStartTime = beginTime;
+                        }
+                        else {
+                            bulletType = 0;
+                        }
+                    }
+                    else if (beginTime - conditionStartTime > conditionDuration) {
+                        condition = false;
+                    }
+                    if (game.update(beginTime, bulletType)) {
+                        condition = false;
+                    }
+                    game.draw(canvas, bulletType);
+                    timeDiff = System.currentTimeMillis() - beginTime;
+                    sleepTime = (int) (Period - timeDiff);
+                    if (sleepTime > 0) {
+                        try {
+                            Thread.sleep(sleepTime);
+                        } catch (InterruptedException e) {}
+                    }
+                }
+            } catch(Exception e) {}
+            finally {
+                if (canvas != null) {
+                    surfaceHolder.unlockCanvasAndPost(canvas);
+                }
+            }
+        }
+    }
+}
